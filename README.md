@@ -1,102 +1,258 @@
-# TransitPulse
+<div align="center">
 
-## Systems Integration
+# 🚌 TransitPulse
 
-Students build **TransitPulse**, a distributed public-transport status information system covering buses, trains, and minibus taxis, with a strong emphasis on how multiple independent services communicate across networks. Core themes are fault tolerance, partial failure handling, data consistency, and proactive monitoring. Students gain practical skills in Message Queue infrastructure and distributed system design throughout the four iterations.
+**What happens to a public-transport status system when one of its services dies mid-run? I built one to find out.**
 
-### Iteration 1: Route-name Service
+![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)
+![Maven](https://img.shields.io/badge/Maven-optional-C71A36?logo=apachemaven&logoColor=white)
+![Dependencies](https://img.shields.io/badge/external_dependencies-0-brightgreen)
 
-Students create the foundational Route-name service, cleaning data containing bus, train, and minibus taxi route/rank names across regions. This lays the groundwork for data handling and processing within a distributed system.
+</div>
 
-### Iteration 2: Status Service and Timetable Service
+TransitPulse tracks the status of **buses, trains and minibus taxis**.
 
-Two additional services: the Status service provides current delay/service status upon query — including bus and train delays and minibus taxi rank loading/departure status; the Timetable service delivers fixed timetables for buses and trains, and rank-based departure info for minibus taxis, for specific routes and regions in JSON format. Focus on inter-service communication.
+It is a small distributed system made up of independent services that communicate over HTTP and a message queue. I built it to practise the less glamorous but important parts of systems integration: retries, partial failure, messy data, graceful degradation and avoiding duplicate alerts.
 
-### Iteration 3: Error Handling and Panic Alerts
+## The system in four steps
 
-Students enhance system robustness by implementing error handling and panic alerts, integrating Message Queue infrastructure to improve performance and resilience. Focus on fault tolerance and proactive monitoring.
+```mermaid
+flowchart LR
 
-### Iteration 4: Public Alerts
+  I1["1. Route-name Service<br/>clean messy route and rank names"]
+  I2["2. Status + Timetable Services<br/>delays, departures and HTTP communication"]
+  I3["3. Failure handling<br/>retries, degradation and panic alerts"]
+  I4["4. AlertBot<br/>public alerts with debouncing"]
 
-An AlertBot is implemented to proactively notify users of service-status changes via public-facing social media platforms, reinforcing responsiveness and user interaction in distributed systems.
-
----
-
-## This project includes working solutions and some in progress
-
-Every iteration folder below is a **complete, independently-compilable snapshot** of the system as it stands at that milestone (iteration 2's folder includes iteration 1's code too, and so on) — the same way a real cumulative project submission works. Each README explains what that iteration adds and how to run its demo.
-
-**No external dependencies.** Everything is written against the plain JDK — `com.sun.net.httpserver.HttpServer` and `java.net.http.HttpClient` for networking, and a small hand-rolled JSON helper instead of Jackson/Gson. That means it builds either way below, and needs no libraries beyond the two small Maven plugins used to run it. Requires **Java 17+** (built and tested on Java 21).
-
-## Repository layout
-
-```
-TransitPulse/
-├── README.md
-├── iteration-1-route-name-service/    (pom.xml + src/main/java, standard Maven layout)
-├── iteration-2-status-and-timetable-services/
-├── iteration-3-error-handling-and-panic-alerts/
-└── iteration-4-public-alerts/
+  I1 --> I2
+  I2 --> I3
+  I3 --> I4
 ```
 
-Each iteration folder is already a self-contained Maven project (`src/main/java/...` is the standard Maven source layout) — just `cd` into whichever iteration you want and run Maven from there.
+Each `iteration-*` folder is a complete runnable snapshot of the project at that stage.
 
-## Quick start — one command
+Later iterations include the functionality from the earlier ones, so the repository shows how the system developed step by step.
+
+| Iteration | What it adds | What the demo shows |
+|---|---|---|
+| **1 — Route-name Service** | Cleans and de-duplicates messy route and rank names | Raw transport data becoming consistent lookups |
+| **2 — Status + Timetable** | Independent services communicating over HTTP | Querying buses, trains and taxi ranks |
+| **3 — Errors + panic alerts** | Retry with backoff, graceful degradation and panic alerts | The Status Service being stopped mid-run while the rest of the system responds |
+| **4 — Public alerts** | AlertBot and debounce logic | Real changes create alerts while rapid repeated changes are suppressed |
+
+## Run it
+
+Run the full system:
 
 ```bash
 ./run.sh
 ```
 
-Runs the final, full system (Iteration 4) end to end. Uses Maven if it's on your `PATH`, and automatically falls back to plain `javac`/`java` if it isn't — so this works either way, no setup decisions needed.
-
-To run an earlier iteration instead:
+Run a specific iteration:
 
 ```bash
-./run.sh 1   # Route-name Service only
-./run.sh 2   # + Status and Timetable Services
-./run.sh 3   # + error handling, MQ, panic alerts
-./run.sh 4   # full system (default)
+./run.sh 3
 ```
 
-If `run.sh` won't execute directly (e.g. `Permission denied`), run it as `bash run.sh` instead, or `chmod +x run.sh` once.
+Valid iterations are:
 
-## Quick start — Maven (run the final, full system)
+```text
+1
+2
+3
+4
+```
+
+The script uses Maven if it is available and falls back to plain `javac` and `java` if it is not.
+
+If the script is not executable:
+
+```bash
+bash run.sh
+```
+
+or:
+
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+## Run it manually
+
+### With Maven
 
 ```bash
 cd iteration-4-public-alerts
 mvn compile exec:java
 ```
 
-That runs the `exec.mainClass` set in that folder's `pom.xml` (`Iteration4Demo` for this folder). To run a different demo class from the same folder without editing the pom:
-
-```bash
-mvn compile exec:java -Dexec.mainClass=transitpulse.Iteration1Demo
-```
-
-`cd` into any of the other iteration folders and run the same `mvn compile exec:java` command to see that milestone on its own.
-
-## Quick start — plain javac/java (no Maven needed)
+### With plain Java
 
 ```bash
 cd iteration-4-public-alerts
+
 find src -name "*.java" > sources.txt
+
 javac -d out @sources.txt
+
 java -cp out transitpulse.Iteration4Demo
 ```
 
-Swap `Iteration4Demo` for `Iteration1Demo` / `Iteration2Demo` / `Iteration3Demo` to see earlier iterations run on their own, or `cd` into any iteration folder and use the same commands there.
+You can replace `Iteration4Demo` with:
 
-## What each demo shows
+```text
+Iteration1Demo
+Iteration2Demo
+Iteration3Demo
+```
 
-| Demo | What it demonstrates |
+to run an earlier stage.
+
+## What happens when a service fails?
+
+Iteration 3 is where the project becomes more interesting.
+
+The Status Service is deliberately stopped while the rest of the system is running.
+
+Instead of immediately crashing, the client retries the request using backoff.
+
+If the service still cannot be reached, the system degrades gracefully and publishes a panic alert through the message queue.
+
+The goal was not just to make the happy path work. I wanted failure to be part of the demo.
+
+## Public alerts and debouncing
+
+Iteration 4 adds an AlertBot that listens for status changes.
+
+A genuine change should create an alert.
+
+But if a service rapidly switches between states, users should not receive a flood of repeated messages.
+
+The debounce logic suppresses those rapid changes.
+
+For example:
+
+```text
+Status changes
+      ↓
+Alert created
+      ↓
+Another rapid change
+      ↓
+Suppressed during debounce window
+      ↓
+Change after the window
+      ↓
+New alert created
+```
+
+This helped me understand why event-driven systems need to think about more than just sending messages. They also need to control noise.
+
+## Why plain Java?
+
+TransitPulse intentionally does not use Spring Boot or an external web framework.
+
+The services use the Java standard library, including:
+
+```text
+com.sun.net.httpserver.HttpServer
+java.net.http.HttpClient
+```
+
+There is also a small hand-written JSON helper.
+
+I wanted to understand the mechanics of service communication before hiding them behind a framework.
+
+The project requires Java 17 or newer and was built and tested with Java 21.
+
+## Messaging
+
+The project currently uses an in-memory publish/subscribe queue.
+
+Its interface is designed around the same basic publish and subscribe concepts I would use with a real message broker.
+
+That keeps the project dependency-free while still letting me practise event-driven communication.
+
+A future version could replace it with something such as ActiveMQ or RabbitMQ without changing the overall idea of the system.
+
+## Project structure
+
+```text
+TransitPulse/
+├── iteration-1-route-name-service/
+├── iteration-2-status-timetable/
+├── iteration-3-errors-panic-alerts/
+├── iteration-4-public-alerts/
+└── run.sh
+```
+
+Each iteration is independently runnable.
+
+## What I learned
+
+### Failure is part of system design
+
+A distributed system cannot assume every service will always be available.
+
+Retries, timeouts and graceful degradation need to be considered as part of the normal system flow.
+
+### Messaging reduces direct coupling
+
+Publishing an event allows another part of the system to react without requiring one service to directly call another.
+
+### More messages are not always better
+
+The AlertBot showed me why debouncing matters.
+
+A technically correct system can still create a bad experience if it overwhelms users with repeated notifications.
+
+### Frameworks solve problems I can now see
+
+Building the HTTP communication with the JDK made some of the conveniences provided by frameworks much easier to appreciate.
+
+## Known limitations
+
+- The message queue is in-memory rather than a real external broker.
+- Data is stored in memory, so every demo starts fresh.
+- Route-name title casing is still naive for some South African place names.
+- There is no persistent database yet.
+
+One known example is:
+
+```text
+KwaZulu-Natal
+```
+
+which can currently become:
+
+```text
+Kwazulu-natal
+```
+
+That casing behaviour is on the fix list.
+
+## Tech stack
+
+| Area | Technology |
 |---|---|
-| `Iteration1Demo` | Loads messy raw route/rank data, cleans and de-duplicates it, looks up an entry. |
-| `Iteration2Demo` | Starts the Status + Timetable services over HTTP, queries a bus, a train, and a taxi rank, shows mode-specific responses. |
-| `Iteration3Demo` | Same as above, but then kills the Status Service mid-run to show retry-with-backoff, graceful degradation, and a panic alert published to the MQ. |
-| `Iteration4Demo` | Full pipeline: a real status change triggers one public alert; a rapid flap between statuses is debounced into silence; a change after the debounce window produces a second alert. |
+| **Language** | Java 21 |
+| **HTTP server** | JDK `HttpServer` |
+| **HTTP client** | JDK `HttpClient` |
+| **Messaging** | In-memory publish / subscribe queue |
+| **Build** | Maven or plain `javac` |
+| **Data** | In-memory |
+| **Architecture** | Independent services, HTTP and event-driven communication |
 
-## Known simplifications (worth knowing, not bugs)
+## What's next
 
-- The Message Queue is an in-memory pub/sub class (`transitpulse.mq.MessageQueue`), not a real broker like RabbitMQ/ActiveMQ — swapped in to keep the project dependency-free. The publish/subscribe API is written the way it would be against a real broker, so replacing it later is a matter of swapping the implementation, not the calling code.
-- `RouteNameService`'s title-casing is naive (e.g. "KwaZulu-Natal" becomes "Kwazulu-natal") — a good candidate for you to improve as an exercise.
-- Data is in-memory only (no database) — restarting a demo starts fresh.
+- [ ] Add unit tests for retry-with-backoff
+- [ ] Add unit tests for debounce behaviour
+- [ ] Fix South African place-name title casing
+- [ ] Replace the in-memory queue with a real message broker
+- [ ] Add PostgreSQL persistence
+- [ ] Record a terminal demo showing Iteration 3 failure handling
+
+---
+
+<p align="center">Built by <a href="https://github.com/ZinhleHlongwane">Zinhle Hlongwane</a> · Johannesburg 🇿🇦 · <a href="https://www.linkedin.com/in/zinhle-hlongwane-872354209">LinkedIn</a></p>
