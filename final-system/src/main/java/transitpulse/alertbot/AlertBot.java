@@ -14,6 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Converts route status-change events into public alerts.
@@ -32,6 +33,7 @@ public final class AlertBot implements AutoCloseable {
     private final MessageQueue.Subscription subscription;
     private final ScheduledExecutorService scheduler;
     private final Map<String, PendingAlert> pendingAlerts = new ConcurrentHashMap<>();
+    private final AtomicLong nextAlertId = new AtomicLong();
     private boolean closed;
 
     public AlertBot(MessageQueue mq, PublicAlertPublisher publisher, Duration debounceWindow) {
@@ -79,18 +81,19 @@ public final class AlertBot implements AutoCloseable {
                 previous.future().cancel(false);
             }
 
+            long alertId = nextAlertId.incrementAndGet();
             ScheduledFuture<?> future = scheduler.schedule(
-                    () -> publishIfStillPending(key, alertText),
+                    () -> publishIfStillPending(key, alertId, alertText),
                     debounceWindow.toNanos(),
                     TimeUnit.NANOSECONDS);
-            pendingAlerts.put(key, new PendingAlert(alertText, future));
+            pendingAlerts.put(key, new PendingAlert(alertId, alertText, future));
         }
     }
 
-    private void publishIfStillPending(String key, String alertText) {
+    private void publishIfStillPending(String key, long alertId, String alertText) {
         synchronized (this) {
             PendingAlert current = pendingAlerts.get(key);
-            if (closed || current == null || !current.text().equals(alertText)) {
+            if (closed || current == null || current.id() != alertId) {
                 return;
             }
             pendingAlerts.remove(key);
@@ -121,5 +124,5 @@ public final class AlertBot implements AutoCloseable {
         scheduler.shutdownNow();
     }
 
-    private record PendingAlert(String text, ScheduledFuture<?> future) { }
+    private record PendingAlert(long id, String text, ScheduledFuture<?> future) { }
 }
