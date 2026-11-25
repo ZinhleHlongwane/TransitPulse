@@ -14,8 +14,8 @@ import java.util.function.Consumer;
 /**
  * A small in-memory, topic-based publish/subscribe queue.
  *
- * Delivery is asynchronous. Each publication is handed to every subscriber
- * registered for that topic when publish is called. This is a demonstration
+ * Delivery is asynchronous and submitted in publication order. Each publication
+ * is handed to every subscriber registered for that topic when publish is called. This is a demonstration
  * adapter, not a durable message broker: messages are not persisted and are
  * lost when the process stops.
  *
