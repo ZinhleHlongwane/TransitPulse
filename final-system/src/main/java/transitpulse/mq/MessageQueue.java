@@ -25,7 +25,7 @@ public class MessageQueue implements AutoCloseable {
 
     private final Map<String, List<Consumer<Message>>> subscribers =
             new java.util.concurrent.ConcurrentHashMap<>();
-    private final ExecutorService deliveryPool = Executors.newCachedThreadPool();
+    // A single worker preserves publication order for subscribers. This is\n    // important for consumers such as AlertBot that coalesce successive events.\n    private final ExecutorService deliveryPool = Executors.newSingleThreadExecutor();
     private final Object lifecycleLock = new Object();
 
     private int pendingDeliveries;
