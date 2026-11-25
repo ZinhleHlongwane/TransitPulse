@@ -37,6 +37,9 @@ public class StatusClient {
                 throw new InvalidRequestException("Status Service", e.getStatusCode(), e.getResponseBody());
             }
             throw new RemoteServiceException("Status Service", e.getStatusCode(), e.getResponseBody());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (IOException e) {
             throw new ServiceUnavailableException("Could not reach Status Service at " + baseUrl, e);
         }
