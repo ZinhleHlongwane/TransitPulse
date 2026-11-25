@@ -7,10 +7,9 @@ import transitpulse.errors.ServiceUnavailableException;
 import java.util.Optional;
 
 /**
- * Iteration 3: wraps StatusClient with retry-with-backoff and panic
- * alerting, so a transient failure of the Status Service degrades
- * gracefully (a stale/absent result, plus an alert) instead of crashing
- * the caller.
+ * Wraps StatusClient with retry-with-backoff and panic alerting, so a
+ * transient failure of the Status Service degrades gracefully instead
+ * of crashing the caller.
  */
 public class ResilientStatusClient {
 
@@ -27,10 +26,12 @@ public class ResilientStatusClient {
     }
 
     /**
-     * Returns the status if it could be retrieved within MAX_ATTEMPTS,
-     * or Optional.empty() if the dependency stayed unreachable — callers
-     * can then fall back to a cached value, a "status unknown" response,
-     * or simply skip this cycle, rather than crashing.
+     * Returns the status after a successful request, or Optional.empty()
+     * when the service remains unavailable or returns malformed data.
+     *
+     * If the calling thread is interrupted during backoff, retries stop
+     * immediately and the interrupt flag is restored. Interruption is not
+     * reported as a service outage.
      */
     public Optional<StatusInfo> getStatusOrEmpty(String region, String name) {
         ServiceUnavailableException lastUnavailable = null;
@@ -40,23 +41,28 @@ public class ResilientStatusClient {
                 return Optional.of(delegate.getStatus(region, name));
             } catch (ServiceUnavailableException e) {
                 lastUnavailable = e;
-                sleep(BACKOFF_MILLIS * attempt);
+                if (attempt < MAX_ATTEMPTS && !pause(BACKOFF_MILLIS * attempt)) {
+                    return Optional.empty();
+                }
             } catch (MalformedResponseException e) {
                 panicAlertPublisher.publishMalformedResponse(serviceName, e);
-                return Optional.empty(); // malformed data won't fix itself on retry
+                return Optional.empty();
             }
         }
 
-        // Exhausted retries against an unreachable dependency: raise a panic alert.
-        panicAlertPublisher.publishServiceUnavailable(serviceName, lastUnavailable);
+        if (lastUnavailable != null) {
+            panicAlertPublisher.publishServiceUnavailable(serviceName, lastUnavailable);
+        }
         return Optional.empty();
     }
 
-    private void sleep(long millis) {
+    private boolean pause(long millis) {
         try {
             Thread.sleep(millis);
+            return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return false;
         }
     }
 }
