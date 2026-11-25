@@ -46,12 +46,12 @@ public class Iteration4Demo {
 
         System.out.println("-- Establishing baseline status --");
         monitor.checkOnce(region, route); // first check just records the baseline, no event yet
-        Thread.sleep(100);
+        mq.awaitIdle(Duration.ofSeconds(2));
 
         System.out.println("-- Forcing a real status change: ON_TIME -> DELAYED --");
         statusService.forceStatus(region, route, StatusInfo.Code.DELAYED);
         monitor.checkOnce(region, route);
-        Thread.sleep(200); // let async MQ delivery run
+        mq.awaitIdle(Duration.ofSeconds(2)); // wait for the asynchronous status-change alert
 
         System.out.println();
         System.out.println("-- Simulating flapping status (should be debounced to one public alert) --");
@@ -61,16 +61,16 @@ public class Iteration4Demo {
         monitor.checkOnce(region, route);
         statusService.forceStatus(region, route, StatusInfo.Code.ON_TIME);
         monitor.checkOnce(region, route);
-        Thread.sleep(300);
+        mq.awaitIdle(Duration.ofSeconds(2));
 
         System.out.println();
         System.out.println("-- Waiting past the debounce window, then changing status again --");
         Thread.sleep(1000);
         statusService.forceStatus(region, route, StatusInfo.Code.CANCELLED);
         monitor.checkOnce(region, route);
-        Thread.sleep(200);
+        mq.awaitIdle(Duration.ofSeconds(2));
 
         statusService.stop();
-        mq.shutdown();
+        mq.awaitIdle(Duration.ofSeconds(2));\n        mq.close();
     }
 }
