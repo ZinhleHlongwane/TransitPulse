@@ -3,6 +3,8 @@ package transitpulse.status;
 import transitpulse.errors.MalformedResponseException;
 import transitpulse.errors.PanicAlertPublisher;
 import transitpulse.errors.ServiceUnavailableException;
+import transitpulse.errors.InvalidRequestException;
+import transitpulse.errors.RemoteServiceException;
 
 import java.util.Optional;
 
@@ -33,7 +35,7 @@ public class ResilientStatusClient {
      * immediately and the interrupt flag is restored. Interruption is not
      * reported as a service outage.
      */
-    public Optional<StatusInfo> getStatusOrEmpty(String region, String name) {
+    public Optional<StatusInfo> getStatusOrEmpty(String region, String name) throws InvalidRequestException, RemoteServiceException, InterruptedException {
         ServiceUnavailableException lastUnavailable = null;
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
