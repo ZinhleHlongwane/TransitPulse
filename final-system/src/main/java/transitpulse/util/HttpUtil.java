@@ -1,6 +1,7 @@
 package transitpulse.util;
 
 import com.sun.net.httpserver.HttpExchange;
+import transitpulse.errors.HttpStatusException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -52,7 +53,7 @@ public final class HttpUtil {
      * refused, timeout, etc.) — callers decide how to translate that into
      * their own error-handling strategy.
      */
-    public static String get(String url) throws IOException, InterruptedException {
+    public static String get(String url) throws IOException, InterruptedException, HttpStatusException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(java.time.Duration.ofSeconds(2))
@@ -60,7 +61,7 @@ public final class HttpUtil {
                 .build();
         HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            throw new IOException("Non-200 response: " + response.statusCode() + " body=" + response.body());
+            throw new HttpStatusException(response.statusCode(), response.body());
         }
         return response.body();
     }
