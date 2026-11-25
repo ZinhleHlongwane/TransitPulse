@@ -3,6 +3,7 @@ package transitpulse.timetable;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import transitpulse.errors.InvalidRequestException;
+import transitpulse.errors.MalformedResponseException;
 import transitpulse.errors.RemoteServiceException;
 import transitpulse.errors.ServiceUnavailableException;
 
@@ -39,6 +40,28 @@ class TimetableClientTest {
             assertEquals("Route", entry.getName());
             assertEquals(2, entry.getFixedTimes().size());
         });
+    }
+
+
+    @Test
+    void rejectsMalformedTimetableJson() throws Exception {
+        withResponse(200, "{not valid json", url ->
+                assertThrows(MalformedResponseException.class,
+                        () -> new TimetableClient(url).getTimetable("Gauteng", "Route")));
+    }
+
+    @Test
+    void rejectsTimetableTimesThatAreNotAStringArray() throws Exception {
+        withResponse(200, "{\"region\":\"Gauteng\",\"name\":\"Route\",\"times\":[\"06:00\", 630]}", url ->
+                assertThrows(MalformedResponseException.class,
+                        () -> new TimetableClient(url).getTimetable("Gauteng", "Route")));
+    }
+
+    @Test
+    void rejectsMissingTimetableTimesArray() throws Exception {
+        withResponse(200, "{\"region\":\"Gauteng\",\"name\":\"Route\"}", url ->
+                assertThrows(MalformedResponseException.class,
+                        () -> new TimetableClient(url).getTimetable("Gauteng", "Route")));
     }
 
     private static void withResponse(int status, String body, UrlAssertion assertion) throws Exception {
