@@ -75,7 +75,7 @@ The current publisher writes to the console. No external notification service is
 
 ## Tests
 
-JUnit 5 tests cover route cleaning and de-duplication, transport-mode parsing, Jackson JSON serialization, escaping, object parsing and strict string-array validation, retry exhaustion and interruption handling, HTTP 4xx/5xx/network/malformed-response classification for the Status and Timetable clients, including invalid JSON and timetable array validation, message fan-out and ordering, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting, panic-alert publication and AlertBot debounce behaviour.
+JUnit 5 unit and integration tests cover route cleaning and de-duplication, transport-mode parsing, Jackson JSON serialization and validation, retry exhaustion and interruption handling, HTTP 4xx/5xx/network/malformed-response classification, message fan-out and ordering, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting, panic-alert publication and AlertBot debounce behaviour. Integration tests also exercise the Route-name → Status/Timetable HTTP flow, StatusChangeMonitor → MessageQueue → AlertBot, exhausted retries → panic alerts, and 404 handling without a false panic alert.
 
 Run the tests with:
 
@@ -92,6 +92,6 @@ GitHub Actions runs `mvn clean verify` when this module changes.
 - Public alerts are printed to the console; no external notification platform is connected.
 - The JSON helper supports only the small flat payloads used by this project; it is not a general-purpose JSON parser.
 - HTTP error handling and service lifecycle management still need further review.
-- More integration tests are needed across the full route → status → message queue → AlertBot flow.
+- The integration tests use local in-memory services; they do not validate real transport feeds, external alert platforms or production infrastructure.
 
 See the [architecture and cleanup plan](../docs/architecture.md) for the broader direction.
