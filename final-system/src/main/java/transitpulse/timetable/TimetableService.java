@@ -51,14 +51,11 @@ public class TimetableService {
                 }
 
                 TimetableEntry timetable = buildTimetable(entry);
-                String timesJson = "[" + String.join(",", timetable.getFixedTimes().stream()
-                        .map(t -> "\"" + t + "\"").toArray(String[]::new)) + "]";
-
                 String json = new SimpleJson()
                         .put("region", timetable.getRegion())
                         .put("name", timetable.getName())
                         .put("mode", entry.getMode().toString())
-                        .putRaw("times", timesJson)
+                        .putStrings("times", timetable.getFixedTimes())
                         .put("note", timetable.getNote())
                         .build();
                 HttpUtil.sendJson(exchange, 200, json);
