@@ -71,6 +71,7 @@ public class Iteration4Demo {
         mq.awaitIdle(Duration.ofSeconds(2));
 
         statusService.stop();
-        mq.awaitIdle(Duration.ofSeconds(2));\n        mq.close();
+        mq.awaitIdle(Duration.ofSeconds(2));
+        mq.close();
     }
 }
