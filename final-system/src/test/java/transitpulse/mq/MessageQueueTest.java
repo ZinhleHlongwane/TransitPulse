@@ -101,4 +101,20 @@ class MessageQueueTest {
             assertThrows(NullPointerException.class, () -> queue.subscribe("events", null));
         }
     }
+    @Test
+    void deliversMessagesToEachSubscriberInPublicationOrder() throws Exception {
+        try (MessageQueue queue = new MessageQueue()) {
+            List<String> received = new CopyOnWriteArrayList<>();
+            queue.subscribe("ordered", message -> received.add(message.getPayload()));
+
+            for (int index = 0; index < 20; index++) {
+                queue.publish("ordered", Integer.toString(index));
+            }
+
+            assertTrue(queue.awaitIdle(Duration.ofSeconds(2)));
+            assertEquals(java.util.stream.IntStream.range(0, 20)
+                    .mapToObj(Integer::toString).toList(), received);
+        }
+    }
+
 }
