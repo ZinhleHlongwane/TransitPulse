@@ -1,54 +1,198 @@
 package transitpulse.mq;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * A minimal in-memory Message Queue: topic-based publish/subscribe with
- * asynchronous delivery.
+ * A small in-memory, topic-based publish/subscribe queue.
  *
- * This stands in for a real broker (RabbitMQ/ActiveMQ) so the whole
- * project stays dependency-free and runnable offline. The public API
- * (publish/subscribe by topic, async delivery, decoupled producers and
- * consumers) mirrors how a real MQ would be used here — swapping this
- * class out for a real broker client later would not require changing
- * any of the calling code's logic.
+ * Delivery is asynchronous. Each publication is handed to every subscriber
+ * registered for that topic when publish is called. This is a demonstration
+ * adapter, not a durable message broker: messages are not persisted and are
+ * lost when the process stops.
+ *
+ * A single queue may be shared by independent producers and consumers.
  */
-public class MessageQueue {
+public class MessageQueue implements AutoCloseable {
 
-    private final Map<String, List<Consumer<Message>>> subscribers = new ConcurrentHashMap<>();
+    private final Map<String, List<Consumer<Message>>> subscribers =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private final ExecutorService deliveryPool = Executors.newCachedThreadPool();
+    private final Object lifecycleLock = new Object();
 
-    public void subscribe(String topic, Consumer<Message> handler) {
-        subscribers.computeIfAbsent(topic, t -> new CopyOnWriteArrayList<>()).add(handler);
+    private int pendingDeliveries;
+    private boolean closed;
+
+    /**
+     * Registers a handler for a topic.
+     *
+     * @return a handle that can be closed to unsubscribe the handler
+     */
+    public Subscription subscribe(String topic, Consumer<Message> handler) {
+        String checkedTopic = requireTopic(topic);
+        Objects.requireNonNull(handler, "handler must not be null");
+
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            List<Consumer<Message>> handlers =
+                    subscribers.computeIfAbsent(checkedTopic, ignored -> new CopyOnWriteArrayList<>());
+            handlers.add(handler);
+        }
+
+        return () -> {
+            synchronized (lifecycleLock) {
+                List<Consumer<Message>> handlers = subscribers.get(checkedTopic);
+                if (handlers != null) {
+                    handlers.remove(handler);
+                    if (handlers.isEmpty()) {
+                        subscribers.remove(checkedTopic, handlers);
+                    }
+                }
+            }
+        };
     }
 
     /**
-     * Publishes a message and returns immediately — delivery to subscribers
-     * happens asynchronously, so a slow or failing subscriber never blocks
-     * the publisher (this is the core resilience benefit of using an MQ).
+     * Publishes to the subscribers registered at the time of this call.
+     * The method does not wait for handlers to finish.
+     *
+     * @throws IllegalStateException if the queue has been shut down
      */
     public void publish(String topic, String payload) {
-        Message message = new Message(topic, payload);
-        List<Consumer<Message>> handlers = subscribers.getOrDefault(topic, List.of());
-        for (Consumer<Message> handler : handlers) {
-            deliveryPool.submit(() -> {
+        String checkedTopic = requireTopic(topic);
+        Message message = new Message(checkedTopic, payload);
+
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            List<Consumer<Message>> handlers = subscribers.get(checkedTopic);
+            if (handlers == null || handlers.isEmpty()) {
+                return;
+            }
+
+            // Snapshot the subscribers so a later unsubscribe does not change
+            // the delivery set for a message that has already been published.
+            for (Consumer<Message> handler : List.copyOf(handlers)) {
+                pendingDeliveries++;
                 try {
-                    handler.accept(message);
-                } catch (Exception e) {
-                    // A misbehaving subscriber must not take down the queue or other subscribers.
-                    System.err.println("Subscriber for topic '" + topic + "' threw an exception: " + e.getMessage());
+                    deliveryPool.submit(() -> deliver(handler, message));
+                } catch (RejectedExecutionException exception) {
+                    pendingDeliveries--;
+                    lifecycleLock.notifyAll();
+                    throw exception;
                 }
-            });
+            }
         }
     }
 
+    private void deliver(Consumer<Message> handler, Message message) {
+        try {
+            handler.accept(message);
+        } catch (RuntimeException exception) {
+            // Isolate a failing consumer; other consumers still receive the message.
+            System.err.println("MessageQueue subscriber failed for topic '"
+                    + message.getTopic() + "': " + exception.getMessage());
+        } finally {
+            synchronized (lifecycleLock) {
+                pendingDeliveries--;
+                lifecycleLock.notifyAll();
+            }
+        }
+    }
+
+    /**
+     * Waits until all deliveries published before the queue becomes idle
+     * have completed, or until the timeout expires.
+     *
+     * @return true when there are no pending deliveries; false on timeout
+     */
+    public boolean awaitIdle(Duration timeout) throws InterruptedException {
+        Objects.requireNonNull(timeout, "timeout must not be null");
+        if (timeout.isNegative()) {
+            throw new IllegalArgumentException("timeout must not be negative");
+        }
+
+        long remainingNanos = timeout.toNanos();
+        long deadline = System.nanoTime() + remainingNanos;
+
+        synchronized (lifecycleLock) {
+            while (pendingDeliveries > 0) {
+                if (remainingNanos <= 0) {
+                    return false;
+                }
+
+                long millis = TimeUnit.NANOSECONDS.toMillis(remainingNanos);
+                int nanos = (int) (remainingNanos - TimeUnit.MILLISECONDS.toNanos(millis));
+                lifecycleLock.wait(millis, nanos);
+                remainingNanos = deadline - System.nanoTime();
+            }
+            return true;
+        }
+    }
+
+    /**
+     * Stops accepting new messages and lets already submitted deliveries finish.
+     * Call awaitIdle before shutdown when the caller needs to know that handlers
+     * have completed.
+     */
     public void shutdown() {
-        deliveryPool.shutdown();
+        synchronized (lifecycleLock) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            deliveryPool.shutdown();
+        }
+    }
+
+    /**
+     * Waits for the delivery executor to terminate after shutdown.
+     */
+    public boolean awaitTermination(Duration timeout) throws InterruptedException {
+        Objects.requireNonNull(timeout, "timeout must not be null");
+        if (timeout.isNegative()) {
+            throw new IllegalArgumentException("timeout must not be negative");
+        }
+        return deliveryPool.awaitTermination(timeout.toNanos(), TimeUnit.NANOSECONDS);
+    }
+
+    @Override
+    public void close() {
+        shutdown();
+        try {
+            if (!awaitTermination(Duration.ofSeconds(5))) {
+                deliveryPool.shutdownNow();
+            }
+        } catch (InterruptedException exception) {
+            deliveryPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void ensureOpen() {
+        if (closed) {
+            throw new IllegalStateException("MessageQueue has been shut down");
+        }
+    }
+
+    private static String requireTopic(String topic) {
+        Objects.requireNonNull(topic, "topic must not be null");
+        if (topic.isBlank()) {
+            throw new IllegalArgumentException("topic must not be blank");
+        }
+        return topic;
+    }
+
+    @FunctionalInterface
+    public interface Subscription extends AutoCloseable {
+        @Override
+        void close();
     }
 }
