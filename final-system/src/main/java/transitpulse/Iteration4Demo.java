@@ -34,7 +34,7 @@ public class Iteration4Demo {
                 System.out.println(">>> [panic-alerts] " + msg.getPayload()));
         PanicAlertPublisher panicAlertPublisher = new PanicAlertPublisher(mq);
 
-        // AlertBot subscribes to status-change and posts publicly, debounced to 1 second for this demo.
+        // AlertBot publishes only after the route has been quiet for one second.
         AlertBot alertBot = new AlertBot(mq, new ConsolePublicAlertPublisher(), Duration.ofSeconds(1));
 
         StatusClient rawClient = new StatusClient("http://localhost:8081");
@@ -54,7 +54,7 @@ public class Iteration4Demo {
         mq.awaitIdle(Duration.ofSeconds(2)); // wait for the asynchronous status-change alert
 
         System.out.println();
-        System.out.println("-- Simulating flapping status (should be debounced to one public alert) --");
+        System.out.println("-- Simulating flapping status (only the final state should be announced) --");
         statusService.forceStatus(region, route, StatusInfo.Code.ON_TIME);
         monitor.checkOnce(region, route);
         statusService.forceStatus(region, route, StatusInfo.Code.DELAYED);
@@ -69,6 +69,8 @@ public class Iteration4Demo {
         statusService.forceStatus(region, route, StatusInfo.Code.CANCELLED);
         monitor.checkOnce(region, route);
         mq.awaitIdle(Duration.ofSeconds(2));
+        Thread.sleep(1100); // allow the final status to remain quiet for the debounce window
+        alertBot.close();
 
         statusService.stop();
         mq.awaitIdle(Duration.ofSeconds(2));
