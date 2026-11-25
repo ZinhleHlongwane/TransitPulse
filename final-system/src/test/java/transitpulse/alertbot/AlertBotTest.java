@@ -97,6 +97,21 @@ class AlertBotTest {
         }
     }
 
+
+    @Test
+    void ignoresStatusChangeEventsWithInvalidJsonSyntax() throws Exception {
+        List<String> published = new CopyOnWriteArrayList<>();
+
+        try (MessageQueue queue = new MessageQueue();
+             AlertBot bot = new AlertBot(queue, published::add, Duration.ofMillis(50))) {
+
+            queue.publish(AlertBot.STATUS_CHANGE_TOPIC, "{not valid json");
+            assertTrue(queue.awaitIdle(Duration.ofSeconds(1)));
+            Thread.sleep(100);
+            assertTrue(published.isEmpty());
+        }
+    }
+
     private static void publishStatus(
             MessageQueue queue, String region, String name, String oldStatus, String newStatus) {
         String payload = new SimpleJson()
