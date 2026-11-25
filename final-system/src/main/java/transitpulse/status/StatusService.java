@@ -73,6 +73,14 @@ public class StatusService {
         server.start();
     }
 
+    /** Returns the actual bound port (useful when started with port 0). */
+    public int getPort() {
+        if (server == null) {
+            throw new IllegalStateException("Service has not been started");
+        }
+        return server.getAddress().getPort();
+    }
+
     public void stop() {
         if (server != null) {
             server.stop(0);
