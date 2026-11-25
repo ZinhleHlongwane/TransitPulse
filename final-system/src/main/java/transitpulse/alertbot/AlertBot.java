@@ -55,11 +55,20 @@ public final class AlertBot implements AutoCloseable {
 
     private void handle(Message message) {
         String payload = message.getPayload();
-        String region = SimpleJson.getString(payload, "region");
-        String name = SimpleJson.getString(payload, "name");
-        String mode = SimpleJson.getString(payload, "mode");
-        String oldStatus = SimpleJson.getString(payload, "oldStatus");
-        String newStatus = SimpleJson.getString(payload, "newStatus");
+        String region;
+        String name;
+        String mode;
+        String oldStatus;
+        String newStatus;
+        try {
+            region = SimpleJson.getString(payload, "region");
+            name = SimpleJson.getString(payload, "name");
+            mode = SimpleJson.getString(payload, "mode");
+            oldStatus = SimpleJson.getString(payload, "oldStatus");
+            newStatus = SimpleJson.getString(payload, "newStatus");
+        } catch (IllegalArgumentException e) {
+            return;
+        }
 
         if (region == null || name == null || newStatus == null) {
             return;
