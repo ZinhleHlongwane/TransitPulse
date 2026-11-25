@@ -99,10 +99,10 @@ class TransitPulseIntegrationTest {
 
     @Test
     void exhaustedConnectionRetriesPublishOnePanicAlert() throws Exception {
-        int unavailablePort = java.net.ServerSocket.class.cast(new java.net.ServerSocket(0)).getLocalPort();
-        // Release the port so the client receives a connection-refused response.
-        try (java.net.ServerSocket ignored = new java.net.ServerSocket(unavailablePort)) {
-            // The socket is closed at the end of this block before the request below.
+        int unavailablePort;
+        // Reserve an ephemeral port briefly, then release it so the client gets connection refused.
+        try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
+            unavailablePort = socket.getLocalPort();
         }
 
         try (MessageQueue queue = new MessageQueue()) {
