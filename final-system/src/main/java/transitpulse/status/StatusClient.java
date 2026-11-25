@@ -44,11 +44,20 @@ public class StatusClient {
             throw new ServiceUnavailableException("Could not reach Status Service at " + baseUrl, e);
         }
 
-        String regionField = SimpleJson.getString(body, "region");
-        String nameField = SimpleJson.getString(body, "name");
-        String modeField = SimpleJson.getString(body, "mode");
-        String statusField = SimpleJson.getString(body, "status");
-        String messageField = SimpleJson.getString(body, "message");
+        String regionField;
+        String nameField;
+        String modeField;
+        String statusField;
+        String messageField;
+        try {
+            regionField = SimpleJson.getString(body, "region");
+            nameField = SimpleJson.getString(body, "name");
+            modeField = SimpleJson.getString(body, "mode");
+            statusField = SimpleJson.getString(body, "status");
+            messageField = SimpleJson.getString(body, "message");
+        } catch (IllegalArgumentException e) {
+            throw new MalformedResponseException("Status Service returned invalid JSON: " + e.getMessage());
+        }
 
         if (regionField == null || nameField == null || modeField == null || statusField == null) {
             throw new MalformedResponseException("Status Service response missing expected fields: " + body);
