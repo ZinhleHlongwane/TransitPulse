@@ -58,6 +58,13 @@ class SimpleJsonTest {
                 () -> SimpleJson.getString("{\"region\":", "region"));
     }
 
+
+    @Test
+    void rejectsTrailingContentAfterJsonObject() {
+        assertThrows(IllegalArgumentException.class,
+                () -> SimpleJson.getString("{\"region\":\"Gauteng\"} trailing", "region"));
+    }
+
     @Test
     void rejectsNonStringValuesInStringArray() {
         assertThrows(IllegalArgumentException.class,
