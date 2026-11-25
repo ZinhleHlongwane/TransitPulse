@@ -32,9 +32,9 @@ The demo starts the in-memory Route-name and Status services, monitors a route, 
 
 These are the initial package boundaries carried over from Iteration 4. They will be reviewed and improved as the implementation is tested.
 
-## Tests\n\nJUnit 5 tests currently cover route cleaning and de-duplication, transport-mode parsing, basic JSON helper behaviour, retry exhaustion and interruption handling. Run them with:\n\n\`\`\`bash\nmvn test\n\`\`\`\n\nThe current GitHub Actions workflow runs `mvn clean verify` on changes to this module.\n\n## Known issues to address
+## Tests\n\nJUnit 5 tests currently cover route cleaning and de-duplication, transport-mode parsing, basic JSON helper behaviour, retry exhaustion and interruption handling, message fan-out, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting and panic-alert publication. Run them with:\n\n\`\`\`bash\nmvn test\n\`\`\`\n\nThe current GitHub Actions workflow runs `mvn clean verify` on changes to this module.\n\n## Message queue behaviour\n\nThe final-system queue is an in-memory asynchronous pub/sub implementation. It snapshots the subscribers for each publication, isolates a subscriber's runtime exception from other subscribers, supports explicit unsubscription, and exposes `awaitIdle(Duration)` so demos and tests can wait for delivery without arbitrary sleeps. `shutdown()` stops new subscriptions and publications while allowing already submitted work to finish; `close()` performs a bounded graceful shutdown. Messages are not persisted, and this queue is not a replacement for a production broker.\n\n## Known issues to address
 
-- Replace timing-based sleeps in the demo with deterministic coordination and queue shutdown/await behaviour.
+- Review the demo's remaining timing delays, which currently illustrate the AlertBot cooldown window.
 - Make retry interruption stop the retry loop immediately.
 - Decide and implement an explicit alert cooldown/debounce policy.
 - Distinguish HTTP client errors from server errors and connection failures.
