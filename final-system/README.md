@@ -4,9 +4,9 @@ The consolidated TransitPulse implementation lives here. The original Iteration 
 
 ## Current state
 
-**Baseline copied; first build verification pending.**
+**Baseline compiles; initial automated tests pass.**
 
-The current source is a clean starting copy of the Iteration 4 implementation. It gives the final system one Maven project and one source tree, separate from the historical snapshots. It is not yet the finished refactor: some original design issues are still present and will be addressed in small, testable steps.
+The current source is a starting copy of the Iteration 4 implementation. It gives the final system one Maven project and one source tree, separate from the historical snapshots. GitHub Actions has successfully compiled it and run the initial JUnit tests. It is not yet the finished refactor: remaining design issues will be addressed in small, testable steps.
 
 ## Run
 
@@ -32,7 +32,7 @@ The demo starts the in-memory Route-name and Status services, monitors a route, 
 
 These are the initial package boundaries carried over from Iteration 4. They will be reviewed and improved as the implementation is tested.
 
-## Known issues to address
+## Tests\n\nJUnit 5 tests currently cover route cleaning and de-duplication, transport-mode parsing, basic JSON helper behaviour, retry exhaustion and interruption handling. Run them with:\n\n\`\`\`bash\nmvn test\n\`\`\`\n\nThe current GitHub Actions workflow runs `mvn clean verify` on changes to this module.\n\n## Known issues to address
 
 - Replace timing-based sleeps in the demo with deterministic coordination and queue shutdown/await behaviour.
 - Make retry interruption stop the retry loop immediately.
