@@ -38,6 +38,18 @@ The queue delivers messages asynchronously in publication order. Subscribers rec
 
 This is an in-memory demonstration queue. Messages are not persisted and will not survive a process restart. It is not a replacement for a production broker.
 
+## HTTP client error handling
+
+The shared HTTP helper keeps non-success response status codes instead of collapsing every failure into a connection error. The Status and Timetable clients translate them into distinct outcomes:
+
+- Connection failures and request timeouts become `ServiceUnavailableException`.
+- HTTP 4xx responses become `InvalidRequestException` and retain the status code (for example, an unknown route returns 404).
+- HTTP 5xx responses become `RemoteServiceException` and retain the status code.
+- A successful response with missing or unrecognized fields becomes `MalformedResponseException`.
+- Interrupted requests propagate as `InterruptedException`, and the thread's interrupt flag is restored.
+
+The resilient Status client retries only connection-level failures. It does not retry invalid requests or server responses, because repeating those requests would not fix the underlying problem. Those categories are propagated to its caller.
+
 ## Public-alert debounce
 
 AlertBot uses a trailing-edge debounce per route:
@@ -53,7 +65,7 @@ The current publisher writes to the console. No external notification service is
 
 ## Tests
 
-JUnit 5 tests cover route cleaning and de-duplication, transport-mode parsing, basic JSON helper behaviour, retry exhaustion and interruption handling, message fan-out and ordering, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting, panic-alert publication and AlertBot debounce behaviour.
+JUnit 5 tests cover route cleaning and de-duplication, transport-mode parsing, basic JSON helper behaviour, retry exhaustion and interruption handling, HTTP 4xx/5xx/network/malformed-response classification for the Status and Timetable clients, message fan-out and ordering, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting, panic-alert publication and AlertBot debounce behaviour.
 
 Run the tests with:
 
