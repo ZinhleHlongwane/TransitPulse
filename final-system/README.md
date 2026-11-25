@@ -38,6 +38,16 @@ The queue delivers messages asynchronously in publication order. Subscribers rec
 
 This is an in-memory demonstration queue. Messages are not persisted and will not survive a process restart. It is not a replacement for a production broker.
 
+## JSON handling
+
+The final system uses Jackson for JSON serialization and parsing. The small `SimpleJson` helper keeps a convenient builder for the project's service responses, but no longer searches raw response text for quote-delimited substrings.
+
+- String values and object keys are escaped by the JSON serializer.
+- Timetable departure times are written as a JSON string array and read as a typed list.
+- Invalid JSON, missing timetable arrays and arrays containing non-string values are treated as malformed responses.
+- Unexpected trailing content after a JSON object is rejected.
+- AlertBot ignores malformed status-change event payloads instead of allowing a parsing exception to escape its subscriber.
+
 ## HTTP client error handling
 
 The shared HTTP helper keeps non-success response status codes instead of collapsing every failure into a connection error. The Status and Timetable clients translate them into distinct outcomes:
@@ -65,7 +75,7 @@ The current publisher writes to the console. No external notification service is
 
 ## Tests
 
-JUnit 5 tests cover route cleaning and de-duplication, transport-mode parsing, basic JSON helper behaviour, retry exhaustion and interruption handling, HTTP 4xx/5xx/network/malformed-response classification for the Status and Timetable clients, message fan-out and ordering, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting, panic-alert publication and AlertBot debounce behaviour.
+JUnit 5 tests cover route cleaning and de-duplication, transport-mode parsing, Jackson JSON serialization, escaping, object parsing and strict string-array validation, retry exhaustion and interruption handling, HTTP 4xx/5xx/network/malformed-response classification for the Status and Timetable clients, including invalid JSON and timetable array validation, message fan-out and ordering, subscriber failure isolation, unsubscribe, queue shutdown, idle waiting, panic-alert publication and AlertBot debounce behaviour.
 
 Run the tests with:
 
