@@ -1,6 +1,9 @@
 package transitpulse.timetable;
 
 import transitpulse.errors.MalformedResponseException;
+import transitpulse.errors.HttpStatusException;
+import transitpulse.errors.InvalidRequestException;
+import transitpulse.errors.RemoteServiceException;
 import transitpulse.errors.ServiceUnavailableException;
 import transitpulse.util.HttpUtil;
 import transitpulse.util.SimpleJson;
@@ -19,12 +22,17 @@ public class TimetableClient {
         this.baseUrl = baseUrl;
     }
 
-    public TimetableEntry getTimetable(String region, String name) throws ServiceUnavailableException, MalformedResponseException {
+    public TimetableEntry getTimetable(String region, String name) throws ServiceUnavailableException, MalformedResponseException, InvalidRequestException, RemoteServiceException, InterruptedException {
         String url = baseUrl + "/timetable?region=" + encode(region) + "&name=" + encode(name);
         String body;
         try {
             body = HttpUtil.get(url);
-        } catch (IOException | InterruptedException e) {
+        } catch (HttpStatusException e) {
+            if (e.isClientError()) {
+                throw new InvalidRequestException("Timetable Service", e.getStatusCode(), e.getResponseBody());
+            }
+            throw new RemoteServiceException("Timetable Service", e.getStatusCode(), e.getResponseBody());
+        } catch (IOException e) {
             throw new ServiceUnavailableException("Could not reach Timetable Service at " + baseUrl, e);
         }
 
