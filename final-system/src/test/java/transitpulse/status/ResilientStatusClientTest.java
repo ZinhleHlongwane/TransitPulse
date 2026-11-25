@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ResilientStatusClientTest {
 
     @Test
-    void stopsRetryingWhenInterruptedAndRestoresInterruptFlag() {
+    void stopsRetryingWhenInterruptedAndRestoresInterruptFlag() throws Exception {
         AtomicInteger attempts = new AtomicInteger();
         RecordingMessageQueue queue = new RecordingMessageQueue();
         StatusClient unavailableClient = new StatusClient("http://unavailable") {
@@ -42,7 +42,7 @@ class ResilientStatusClientTest {
     }
 
     @Test
-    void publishesOnePanicAlertAfterAllAttemptsFail() {
+    void publishesOnePanicAlertAfterAllAttemptsFail() throws Exception {
         AtomicInteger attempts = new AtomicInteger();
         RecordingMessageQueue queue = new RecordingMessageQueue();
         StatusClient unavailableClient = new StatusClient("http://unavailable") {
