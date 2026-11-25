@@ -1,0 +1,17 @@
+# Java build output
+**/target/
+**/out/
+**/build/
+*.class
+.sources.txt
+sources.txt
+
+# IDE and editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# Logs
+*.log
