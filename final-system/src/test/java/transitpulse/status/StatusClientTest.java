@@ -58,6 +58,14 @@ class StatusClientTest {
                         () -> new StatusClient(url).getStatus("Gauteng", "Route")));
     }
 
+
+    @Test
+    void mapsInvalidJsonSyntaxToMalformedResponse() throws Exception {
+        withResponse(200, "{not valid json", url ->
+                assertThrows(MalformedResponseException.class,
+                        () -> new StatusClient(url).getStatus("Gauteng", "Route")));
+    }
+
     private static void withResponse(int status, String body, UrlAssertion assertion) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/status", exchange -> {
