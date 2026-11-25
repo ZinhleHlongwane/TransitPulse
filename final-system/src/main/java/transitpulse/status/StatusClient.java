@@ -1,6 +1,9 @@
 package transitpulse.status;
 
 import transitpulse.errors.MalformedResponseException;
+import transitpulse.errors.HttpStatusException;
+import transitpulse.errors.InvalidRequestException;
+import transitpulse.errors.RemoteServiceException;
 import transitpulse.errors.ServiceUnavailableException;
 import transitpulse.model.TransportMode;
 import transitpulse.util.HttpUtil;
@@ -24,12 +27,17 @@ public class StatusClient {
         this.baseUrl = baseUrl;
     }
 
-    public StatusInfo getStatus(String region, String name) throws ServiceUnavailableException, MalformedResponseException {
+    public StatusInfo getStatus(String region, String name) throws ServiceUnavailableException, MalformedResponseException, InvalidRequestException, RemoteServiceException, InterruptedException {
         String url = baseUrl + "/status?region=" + encode(region) + "&name=" + encode(name);
         String body;
         try {
             body = HttpUtil.get(url);
-        } catch (IOException | InterruptedException e) {
+        } catch (HttpStatusException e) {
+            if (e.isClientError()) {
+                throw new InvalidRequestException("Status Service", e.getStatusCode(), e.getResponseBody());
+            }
+            throw new RemoteServiceException("Status Service", e.getStatusCode(), e.getResponseBody());
+        } catch (IOException e) {
             throw new ServiceUnavailableException("Could not reach Status Service at " + baseUrl, e);
         }
 
