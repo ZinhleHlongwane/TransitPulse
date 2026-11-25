@@ -1,9 +1,10 @@
 package transitpulse.mq;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
- * A single message published to a topic on the MessageQueue.
+ * An immutable message published to a MessageQueue topic.
  */
 public final class Message {
     private final String topic;
@@ -11,8 +12,11 @@ public final class Message {
     private final Instant publishedAt;
 
     public Message(String topic, String payload) {
-        this.topic = topic;
-        this.payload = payload;
+        this.topic = Objects.requireNonNull(topic, "topic must not be null");
+        if (topic.isBlank()) {
+            throw new IllegalArgumentException("topic must not be blank");
+        }
+        this.payload = Objects.requireNonNull(payload, "payload must not be null");
         this.publishedAt = Instant.now();
     }
 
