@@ -40,8 +40,8 @@ public final class AlertBot implements AutoCloseable {
         Objects.requireNonNull(mq, "message queue must not be null");
         this.publisher = Objects.requireNonNull(publisher, "publisher must not be null");
         this.debounceWindow = Objects.requireNonNull(debounceWindow, "debounce window must not be null");
-        if (debounceWindow.isNegative()) {
-            throw new IllegalArgumentException("debounce window must not be negative");
+        if (debounceWindow.isNegative() || debounceWindow.isZero()) {
+            throw new IllegalArgumentException("debounce window must be greater than zero");
         }
 
         ThreadFactory threadFactory = task -> {
